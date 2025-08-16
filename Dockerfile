@@ -21,3 +21,6 @@ EXPOSE 8080
 # Run the app
 CMD ["gunicorn", "-b", "0.0.0.0:8080", "app:app"]
 
+#to run the docekr file run this command 
+#docker run -v $(pwd)/instance:/app/instance -p 5051:8080 stock-analyzer
+#chaeg the port to 5051 to 8080 if its not wotking 
