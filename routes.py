@@ -31,113 +31,199 @@ import google.generativeai as genai
 
 
 
+#the commeneted code is for pyhton sql alchemy for storing db and belwo comented code their is firebase code for server database 
+
+
+# # Create Blueprint for the main routes
+# main = Blueprint('main', __name__)
+
+# ALPHA_VANTAGE_API_KEY = os.getenv("ALPHA_VANTAGE_API_KEY", "MSC4JZ5TIYC8P80T")
+# NEWS_API_KEY = "3db8fcc3c31e405492f6849159dad9e6"  # Sign up at https://newsapi.org
+# geminiApiKey = "AIzaSyBW2Xwxxz4SK01_vUrTYhZ_8lc5p8YrT-A"
 
 
 
-# Create Blueprint for the main routes
+# @main.route('/admin/delete_user/<int:user_id>', methods=['POST'])
+# def delete_user(user_id):
+#     # Fetch the user by ID
+#     user = User.query.get(user_id)
+#     if user:
+#         db.session.delete(user)
+#         db.session.commit()
+#         return "User deleted successfully!", 200
+#     return "User not found!", 404
+
+
+# @main.route('/admin/view_users')
+# def view_users():
+#     # Fetch all users from the database
+#     users = User.query.all()
+#     return render_template('view_users.html', users=users)
+
+
+
+# # Route for login
+# @main.route('/login', methods=['GET', 'POST'])
+# def login():
+#     if current_user.is_authenticated:
+#         return redirect(url_for('main.index'))
+
+#     if request.method == 'POST':
+#         username = request.form['username']
+#         password = request.form['password']
+
+#         # Retrieve the user from the database
+#         user = User.query.filter_by(username=username).first()
+
+#         # If the user exists and the password is correct
+#         if user and check_password_hash(user.password, password):
+#             login_user(user)  # Log the user in
+#             flash('Login successful!', 'success')
+#             return redirect(url_for('main.index'))
+#         else:
+#             flash('Login failed. Check your username and/or password.', 'danger')
+
+#     return render_template('login.html')
+
+
+
+# @main.route('/signup', methods=['GET', 'POST'])
+# def signup():
+#     if current_user.is_authenticated:
+#         return redirect(url_for('main.index'))
+
+#     if request.method == 'POST':
+#         username = request.form['username']
+#         password = request.form['password']
+
+#         # Check if the username already exists
+#         existing_user = User.query.filter_by(username=username).first()
+#         if existing_user:
+#             flash('Username already exists. Please choose another.', 'danger')
+#             return redirect(url_for('main.signup'))
+
+#         # Hash password and create new user
+#         hashed_password = generate_password_hash(password, method='pbkdf2:sha256')
+#         new_user = User(username=username, password=hashed_password)
+
+#         db.session.add(new_user)
+#         db.session.commit()
+
+#         flash('Your account has been created!', 'success')
+#         return redirect(url_for('main.login'))
+
+#     return render_template('signup.html')
+
+
+# # Route for logout
+# @main.route('/logout')
+# @login_required  # Ensure the user must be logged in to access this route
+# def logout():
+#     print('user getting logged out ......')
+#     logout_user()  # Logs the user out
+#     return redirect(url_for('main.login'))  # Redirect to the login page after logout
+
+# # Protected route for logged-in users
+# @main.route('/index')
+# @login_required
+# def index():
+#     return render_template('index.html')
+
+
+
+
+
+
+
+
+
+
+from flask import Blueprint, request, redirect, url_for, render_template, flash
+from flask_login import login_user, logout_user, login_required, current_user
+from werkzeug.security import generate_password_hash, check_password_hash
+from models import User  # Firestore-based User class
+
 main = Blueprint('main', __name__)
 
 ALPHA_VANTAGE_API_KEY = os.getenv("ALPHA_VANTAGE_API_KEY", "MSC4JZ5TIYC8P80T")
-NEWS_API_KEY = "3db8fcc3c31e405492f6849159dad9e6"  # Sign up at https://newsapi.org
+NEWS_API_KEY = "3db8fcc3c31e405492f6849159dad9e6"
 geminiApiKey = "AIzaSyBW2Xwxxz4SK01_vUrTYhZ_8lc5p8YrT-A"
 
 
+# 🔥 View all users (Admin)
+@main.route('/admin/view_users')
+def view_users():
+    users_ref = User.users_ref.stream()
+    users = [doc.to_dict() for doc in users_ref]
+    return render_template('view_users.html', users=users)
 
-@main.route('/admin/delete_user/<int:user_id>', methods=['POST'])
-def delete_user(user_id):
-    # Fetch the user by ID
-    user = User.query.get(user_id)
+
+# 🔥 Delete a user (Admin)
+@main.route('/admin/delete_user/<email>', methods=['POST'])
+def delete_user(email):
+    user = User.get_user(email)
     if user:
-        db.session.delete(user)
-        db.session.commit()
+        User.users_ref.document(email).delete()
         return "User deleted successfully!", 200
     return "User not found!", 404
 
 
-@main.route('/admin/view_users')
-def view_users():
-    # Fetch all users from the database
-    users = User.query.all()
-    return render_template('view_users.html', users=users)
-
-
-
-# Route for login
-@main.route('/login', methods=['GET', 'POST'])
-def login():
-    if current_user.is_authenticated:
-        return redirect(url_for('main.index'))
-
-    if request.method == 'POST':
-        username = request.form['username']
-        password = request.form['password']
-
-        # Retrieve the user from the database
-        user = User.query.filter_by(username=username).first()
-
-        # If the user exists and the password is correct
-        if user and check_password_hash(user.password, password):
-            login_user(user)  # Log the user in
-            flash('Login successful!', 'success')
-            return redirect(url_for('main.index'))
-        else:
-            flash('Login failed. Check your username and/or password.', 'danger')
-
-    return render_template('login.html')
-
-
-
+# 🔥 Signup
 @main.route('/signup', methods=['GET', 'POST'])
 def signup():
     if current_user.is_authenticated:
         return redirect(url_for('main.index'))
 
     if request.method == 'POST':
-        username = request.form['username']
+        email = request.form['username']  # keep using "username" field for email
         password = request.form['password']
 
-        # Check if the username already exists
-        existing_user = User.query.filter_by(username=username).first()
+        existing_user = User.get_user(email)
         if existing_user:
-            flash('Username already exists. Please choose another.', 'danger')
+            flash('User already exists. Please choose another.', 'danger')
             return redirect(url_for('main.signup'))
 
-        # Hash password and create new user
-        hashed_password = generate_password_hash(password, method='pbkdf2:sha256')
-        new_user = User(username=username, password=hashed_password)
-
-        db.session.add(new_user)
-        db.session.commit()
-
+        User.create_user(email, password)
         flash('Your account has been created!', 'success')
         return redirect(url_for('main.login'))
 
     return render_template('signup.html')
 
 
-# Route for logout
-@main.route('/logout')
-@login_required  # Ensure the user must be logged in to access this route
-def logout():
-    print('user getting logged out ......')
-    logout_user()  # Logs the user out
-    return redirect(url_for('main.login'))  # Redirect to the login page after logout
+# 🔥 Login
+@main.route('/login', methods=['GET', 'POST'])
+def login():
+    if current_user.is_authenticated:
+        return redirect(url_for('main.index'))
 
-# Protected route for logged-in users
+    if request.method == 'POST':
+        email = request.form['username']  # same "username" field
+        password = request.form['password']
+
+        user = User.get_user(email)
+        if user and user.check_password(password):
+            login_user(user)  # Requires User class to subclass UserMixin
+            flash('Login successful!', 'success')
+            return redirect(url_for('main.index'))
+        else:
+            flash('Login failed. Check your email and/or password.', 'danger')
+
+    return render_template('login.html')
+
+
+# 🔥 Logout
+@main.route('/logout')
+@login_required
+def logout():
+    logout_user()
+    return redirect(url_for('main.login'))
+
+
+# 🔒 Protected route
 @main.route('/index')
 @login_required
 def index():
     return render_template('index.html')
-
-
-
-
-
-
-
-
-
-
 
 
 
