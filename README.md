@@ -69,3 +69,4 @@ This is a personal project and is not open for contributions. The code and its c
 License
 
 This project is private and not licensed for external use.
+# Stock_analyzer_WithoutDB_Render
