@@ -7,6 +7,7 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/png" href="static/Logo_White.png">
     <style>
         :root {
             --primary-blue: #0055cc;
@@ -183,14 +184,110 @@
             margin-right: 0.5rem;
         }
 
-        footer {
-            background: rgba(0, 0, 0, 0.9);
-            text-align: center;
-            padding: 1.5rem;
-            font-size: 0.9rem;
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
-            color: var(--text-light);
-        }
+.site-footer {
+    background: rgba(5, 5, 5, 0.95);
+    padding: 40px 0 20px; 
+    font-size: 15px;
+    line-height: 24px;
+    color: #e0e0e0;
+    border-top: 1px solid var(--primary-blue);
+    margin-top: 4rem;
+}
+
+.site-footer hr {
+    border-top-color: rgba(255, 255, 255, 0.1);
+    margin: 20px 0;
+}
+
+.site-footer h6 {
+    color: #fff;
+    font-size: 16px;
+    text-transform: uppercase;
+    margin-top: 5px;
+    letter-spacing: 2px;
+    border-bottom: 2px solid var(--accent-teal);
+    padding-bottom: 5px;
+}
+
+.site-footer a {
+    color: var(--text-light);
+    text-decoration: none;
+    transition: all 0.3s;
+}
+
+.site-footer a:hover {
+    color: var(--primary-blue);
+    text-decoration: underline;
+}
+
+.footer-links {
+    padding-left: 0;
+    list-style: none;
+}
+
+.footer-links li {
+    display: block;
+    margin-bottom: 6px;
+}
+
+.social-icons {
+    padding-left: 0;
+    margin-bottom: 0;
+    list-style: none;
+    float: right;
+}
+
+.social-icons li {
+    display: inline-block;
+    margin-bottom: 4px;
+}
+
+.social-icons li:not(:last-child) {
+    margin-right: 10px;
+}
+
+.social-icons a {
+    background-color: rgba(255, 255, 255, 0.1);
+    color: #fff;
+    font-size: 16px;
+    display: inline-block;
+    line-height: 40px;
+    width: 40px;
+    height: 40px;
+    text-align: center;
+    transition: all 0.2s linear;
+    border-radius: 50%;
+}
+
+.social-icons a:hover {
+    background-color: var(--primary-blue);
+    color: #fff;
+    text-decoration: none;
+}
+
+.social-icons .linkedin:hover {
+    background-color: #0077B5;
+}
+
+/* Responsive adjustments for footer */
+@media (max-width: 991px) {
+    .social-icons {
+        float: none;
+        margin-top: 15px;
+    }
+}
+@media (max-width: 767px) {
+    .site-footer {
+        padding-bottom: 0;
+    }
+    .footer-col {
+        margin-bottom: 30px;
+    }
+    .copyright-text, .social-icons {
+        text-align: center;
+        width: 100%;
+    }
+}
 
         @keyframes fadeInUp {
             from { opacity: 0; transform: translateY(30px); }
@@ -267,9 +364,52 @@
 
     </div>
 
-    <footer>
-        <p>© 2025 Stock Insights App. All Rights Reserved.</p>
-    </footer>
+<footer class="site-footer">
+    <div class="container">
+        <div class="row">
+            <div class="col-md-4 col-sm-6 footer-col">
+                <h6>Stock Insights</h6>
+                <p class="text-justify">
+                    Stock Insights provides advanced tools for stock analysis. Please remember:
+                    <strong>Investing is risky. Consult a financial advisor.</strong>
+                    Content is for educational and informational purposes only.
+                </p>
+            </div>
+
+            <div class="col-md-4 col-sm-6 footer-col">
+                <h6>Quick Links</h6>
+                <ul class="footer-links">
+                    <li><a href="About_us.html">About Us</a></li>
+                    <li><a href="#">Contact Us</a></li>
+                </ul>
+            </div>
+
+            <div class="col-md-4 col-sm-6 footer-col">
+                <h6>Legal</h6>
+                <ul class="footer-links">
+                    <li><a href='Terms_of_service.html'>Terms of Service</a></li>
+                    <li><a href="Privacy_policy.html">Privacy Policy</a></li>
+                </ul>
+            </div>
+        </div>
+        <hr>
+    </div>
+    <div class="container">
+        <div class="row">
+            <div class="col-md-8 col-sm-6 col-xs-12">
+                <p class="copyright-text">
+                    &copy; <span id="currentYear"></span> Stock Insights App. All Rights Reserved.
+                </p>
+            </div>
+
+            <div class="col-md-4 col-sm-6 col-xs-12">
+                <ul class="social-icons">
+                    <li><a class="linkedin" href="https://www.linkedin.com/company/stock-insight" target="_blank" title="LinkedIn"><i class="fab fa-linkedin"></i></a></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</footer>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
     <script>

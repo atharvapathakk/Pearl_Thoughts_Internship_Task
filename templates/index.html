@@ -567,11 +567,6 @@
 
 
 
-To remove the "Get Buy/Sell Signals" button from the UI, you can simply comment out the corresponding HTML button element. This keeps the code for potential future use without displaying it to the user.
-
-Here is the code with the button commented out:
-
-```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -580,6 +575,13 @@ Here is the code with the button commented out:
     <title>Stock Insights</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link rel="icon" type="image/png" href="static/Logo_White.png">
+
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet" />
+
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet" />
+
+
     <style>
         :root {
             --primary-blue: #0055cc;
@@ -830,14 +832,14 @@ Here is the code with the button commented out:
         .btn-analysis:hover {
             background: #00a896;
         }
-
-        /* .btn-signals {
+        
+        .btn-signals {
             background: #17a2b8;
         }
 
         .btn-signals:hover {
             background: #138496;
-        } */
+        }
 
         .popover {
             background: rgba(0, 0, 0, 0.95);
@@ -860,18 +862,7 @@ Here is the code with the button commented out:
             padding: 10px;
         }
 
-        footer {
-            margin-top: 3rem;
-            background: rgba(0, 0, 0, 0.9);
-            text-align: center;
-            padding: 1.5rem;
-            font-size: 0.9rem;
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
-            color: var(--text-light);
-            position: relative;
-            z-index: 1;
-        }
-
+     
         @media (max-width: 768px) {
             .form-container {
                 margin: 2rem 1rem;
@@ -901,6 +892,119 @@ Here is the code with the button commented out:
                 font-size: 0.85rem;
             }
         }
+
+        /* --- Professional Footer CSS --- */
+        .site-footer {
+            background: rgba(5, 5, 5, 0.95);
+            padding: 40px 0 20px; 
+            font-size: 15px;
+            line-height: 24px;
+            color: #e0e0e0;
+            border-top: 1px solid var(--primary-blue);
+            margin-top: 4rem;
+        }
+
+        .site-footer hr {
+            border-top-color: rgba(255, 255, 255, 0.1);
+            margin: 20px 0;
+        }
+
+        .site-footer h6 {
+            color: #fff;
+            font-size: 16px;
+            text-transform: uppercase;
+            margin-top: 5px;
+            letter-spacing: 2px;
+            border-bottom: 2px solid var(--accent-teal);
+            padding-bottom: 5px;
+        }
+
+        .site-footer a {
+            color: var(--text-light);
+            text-decoration: none;
+            transition: all 0.3s;
+        }
+
+        .site-footer a:hover {
+            color: var(--primary-blue);
+            text-decoration: underline;
+        }
+
+        .footer-links {
+            padding-left: 0;
+            list-style: none;
+        }
+
+        .footer-links li {
+            display: block;
+            margin-bottom: 6px;
+        }
+
+        .copyright-text {
+            margin: 0;
+            font-size: 14px;
+        }
+
+        .social-icons {
+            padding-left: 0;
+            margin-bottom: 0;
+            list-style: none;
+            float: right;
+        }
+
+        .social-icons li {
+            display: inline-block;
+            margin-bottom: 4px;
+        }
+
+        .social-icons li:not(:last-child) {
+            margin-right: 10px;
+        }
+
+        .social-icons a {
+            background-color: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            font-size: 16px;
+            display: inline-block;
+            line-height: 40px;
+            width: 40px;
+            height: 40px;
+            text-align: center;
+            -webkit-transition: all 0.2s linear;
+            -o-transition: all 0.2s linear;
+            transition: all 0.2s linear;
+            border-radius: 50%;
+        }
+
+        .social-icons a:hover {
+            background-color: var(--primary-blue);
+            color: #fff;
+            text-decoration: none;
+        }
+
+        .social-icons .linkedin:hover {
+            background-color: #0077B5;
+        }
+
+        /* Responsive adjustments for footer */
+        @media (max-width: 991px) {
+            .social-icons {
+                float: none;
+                margin-top: 15px;
+            }
+        }
+        @media (max-width: 767px) {
+            .site-footer {
+                padding-bottom: 0;
+            }
+            .footer-col {
+                margin-bottom: 30px;
+            }
+            .copyright-text, .social-icons {
+                text-align: center;
+                width: 100%;
+            }
+        }
     </style>
 </head>
 <body>
@@ -909,7 +1013,7 @@ Here is the code with the button commented out:
     <nav class="navbar navbar-expand-lg navbar-dark">
         <div class="container-fluid d-flex justify-content-between align-items-center">
             <a class="navbar-brand" href="#"><i class="fas fa-chart-line"></i> Stock Insights</a>
-            <a class="btn logout-btn" href="{{ url_for('main.logout') }}">Logout</a>
+            <a class="btn logout-btn" href="#">Stocks</a>    <!-- log out button  link for it            href="{{ url_for('main.logout') }} -->
         </div>
     </nav>
 
@@ -1005,13 +1109,77 @@ Here is the code with the button commented out:
                 <i class="fas fa-chart-bar"></i> Get Fundamental Analysis
             </button>
 
+
+            <button formaction="/" type="submit" class="btn btn-custom btn-signals"
+                data-bs-toggle="popover" 
+                data-bs-placement="left" 
+                data-bs-trigger="hover" 
+                data-bs-content="Generates buy and sell signals for the selected stock based on technical analysis indicators."
+                title="Get Buy/Sell Signals (Locked)">
+                <i class="fas fa-chart-line"></i> Get Buy/Sell Signals
+            </button>
+
+
+            <button onclick = "navigateTo('/Portfolio_Analysis')" type="button" class="btn btn-custom btn-analysis"
+                data-bs-toggle="popover" 
+                data-bs-placement="left" 
+                data-bs-trigger="hover" 
+                data-bs-content="Provides a detailed analysis of your portfolio's performance and risk metrics."
+                title="Get Portfolio Analysis">
+                <i class="fas fa-chart-pie"></i> Get Portfolio Analysis (Locked)
+            </button>
+            
+
             </form>
     </div>
 
-    <footer>
-        <p>© 2025 Stock Insights App. All Rights Reserved.</p>
-    </footer>
+    <footer class="site-footer">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-4 col-sm-6 footer-col">
+                    <h6>Stock Insights</h6>
+                    <p class="text-justify">
+                        Stock Insights provides advanced tools for stock analysis. Please remember:
+                        <strong>Investing is risky. Consult a financial advisor.</strong>
+                        Content is for educational and informational purposes only.
+                    </p>
+                </div>
 
+                <div class="col-md-4 col-sm-6 footer-col">
+                    <h6>Quick Links</h6>
+                    <ul class="footer-links">
+                        <li><a href="About_us.html">About Us</a></li>
+                        <li><a href="#">Contact Us</a></li>
+
+                    </ul>
+                </div>
+
+                <div class="col-md-4 col-sm-6 footer-col">
+                <h6>Legal</h6>
+                <ul class="footer-links">
+                    <li><a href='Terms_of_service.html'>Terms of Service</a></li>
+                    <li><a href="Privacy_policy.html">Privacy Policy</a></li>
+                </ul>
+                </div>
+            </div>
+            <hr>
+        </div>
+        <div class="container">
+            <div class="row">
+                <div class="col-md-8 col-sm-6 col-xs-12">
+                    <p class="copyright-text">
+                        &copy; <span id="currentYear"></span> Stock Insights App. All Rights Reserved.
+                    </p>
+                </div>
+
+                <div class="col-md-4 col-sm-6 col-xs-12">
+                    <ul class="social-icons">
+                        <li><a class="linkedin" href="https://www.linkedin.com/company/stock-insight-ai-agent/posts/?feedView=all" target="_blank" title="LinkedIn"><i class="fab fa-linkedin"></i></a></li>
+                        </ul>
+                </div>
+            </div>
+        </div>
+    </footer>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         function navigateTo(route) {
@@ -1026,6 +1194,9 @@ Here is the code with the button commented out:
                     html: true
                 });
             });
+
+            // Set Current Year in Footer
+            document.getElementById('currentYear').textContent = new Date().getFullYear();
         });
 
         // Animated Moving Balls
@@ -1095,4 +1266,3 @@ Here is the code with the button commented out:
     </script>
 </body>
 </html>
-```

@@ -10,6 +10,9 @@ app.config.from_object(Config)
 
 # Initialize the extensions
 db.init_app(app)
+with app.app_context():
+    db.create_all()
+
 login_manager.init_app(app)
 
 # Register the blueprint with the URL prefix '/'

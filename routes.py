@@ -14,7 +14,12 @@ from flask import render_template, request
 from datetime import datetime
 import urllib.parse
 import google.generativeai as genai
-
+from types import SimpleNamespace
+import json
+from google import genai
+import numpy as np 
+import pandas as pd
+from datetime import datetime, timedelta
 
 
 
@@ -34,96 +39,192 @@ import google.generativeai as genai
 #the commeneted code is for pyhton sql alchemy for storing db and belwo comented code their is firebase code for server database 
 
 
-# # Create Blueprint for the main routes
+# Create Blueprint for the main routes
+main = Blueprint('main', __name__)
+
+ALPHA_VANTAGE_API_KEY = os.getenv("ALPHA_VANTAGE_API_KEY", "MSC4JZ5TIYC8P80T")
+NEWS_API_KEY = "3db8fcc3c31e405492f6849159dad9e6"  # Sign up at https://newsapi.org
+geminiApiKey = "AIzaSyBW2Xwxxz4SK01_vUrTYhZ_8lc5p8YrT-A"
+
+
+
+@main.route('/admin/delete_user/<int:user_id>', methods=['POST'])
+def delete_user(user_id):
+    # Fetch the user by ID
+    user = User.query.get(user_id)
+    if user:
+        db.session.delete(user)
+        db.session.commit()
+        return "User deleted successfully!", 200
+    return "User not found!", 404
+
+
+@main.route('/admin/view_users')
+def view_users():
+    # Fetch all users from the database
+    users = User.query.all()
+    return render_template('view_users.html', users=users)
+
+
+
+# Route for login
+@main.route('/login', methods=['GET', 'POST'])
+def login():
+    if current_user.is_authenticated:
+        return redirect(url_for('main.index'))
+
+    if request.method == 'POST':
+        username = request.form['username']
+        password = request.form['password']
+
+        # Retrieve the user from the database
+        user = User.query.filter_by(username=username).first()
+
+        # If the user exists and the password is correct
+        if user and check_password_hash(user.password, password):
+            login_user(user)  # Log the user in
+            flash('Login successful!', 'success')
+            return redirect(url_for('main.index'))
+        else:
+            flash('Login failed. Check your username and/or password.', 'danger')
+
+    return render_template('login.html')
+
+
+
+@main.route('/signup', methods=['GET', 'POST'])
+def signup():
+    if current_user.is_authenticated:
+        return redirect(url_for('main.index'))
+
+    if request.method == 'POST':
+        username = request.form['username']
+        password = request.form['password']
+
+        # Check if the username already exists
+        existing_user = User.query.filter_by(username=username).first()
+        if existing_user:
+            flash('Username already exists. Please choose another.', 'danger')
+            return redirect(url_for('main.signup'))
+
+        # Hash password and create new user
+        hashed_password = generate_password_hash(password, method='pbkdf2:sha256')
+        new_user = User(username=username, password=hashed_password)
+
+        db.session.add(new_user)
+        db.session.commit()
+
+        flash('Your account has been created!', 'success')
+        return redirect(url_for('main.login'))
+
+    return render_template('signup.html')
+
+
+# Route for logout
+@main.route('/logout')
+@login_required  # Ensure the user must be logged in to access this route
+def logout():
+    print('user getting logged out ......')
+    logout_user()  # Logs the user out
+    return redirect(url_for('main.login'))  # Redirect to the login page after logout
+
+# Protected route for logged-in users
+@main.route('/index')
+#@login_required
+def index():
+    return render_template('index.html')
+
+
+
+
+
+
+
+
+
+
+# from flask import Blueprint, request, redirect, url_for, render_template, flash
+# from flask_login import login_user, logout_user, login_required, current_user
+# from werkzeug.security import generate_password_hash, check_password_hash
+# from models import User  # Firestore-based User class
+
 # main = Blueprint('main', __name__)
 
 # ALPHA_VANTAGE_API_KEY = os.getenv("ALPHA_VANTAGE_API_KEY", "MSC4JZ5TIYC8P80T")
-# NEWS_API_KEY = "3db8fcc3c31e405492f6849159dad9e6"  # Sign up at https://newsapi.org
+# NEWS_API_KEY = "3db8fcc3c31e405492f6849159dad9e6"
 # geminiApiKey = "AIzaSyBW2Xwxxz4SK01_vUrTYhZ_8lc5p8YrT-A"
 
 
+# # 🔥 View all users (Admin)
+# @main.route('/admin/view_users')
+# def view_users():
+#     users_ref = User.users_ref.stream()
+#     users = [doc.to_dict() for doc in users_ref]
+#     return render_template('view_users.html', users=users)
 
-# @main.route('/admin/delete_user/<int:user_id>', methods=['POST'])
-# def delete_user(user_id):
-#     # Fetch the user by ID
-#     user = User.query.get(user_id)
+
+# # 🔥 Delete a user (Admin)
+# @main.route('/admin/delete_user/<email>', methods=['POST'])
+# def delete_user(email):
+#     user = User.get_user(email)
 #     if user:
-#         db.session.delete(user)
-#         db.session.commit()
+#         User.users_ref.document(email).delete()
 #         return "User deleted successfully!", 200
 #     return "User not found!", 404
 
 
-# @main.route('/admin/view_users')
-# def view_users():
-#     # Fetch all users from the database
-#     users = User.query.all()
-#     return render_template('view_users.html', users=users)
-
-
-
-# # Route for login
-# @main.route('/login', methods=['GET', 'POST'])
-# def login():
-#     if current_user.is_authenticated:
-#         return redirect(url_for('main.index'))
-
-#     if request.method == 'POST':
-#         username = request.form['username']
-#         password = request.form['password']
-
-#         # Retrieve the user from the database
-#         user = User.query.filter_by(username=username).first()
-
-#         # If the user exists and the password is correct
-#         if user and check_password_hash(user.password, password):
-#             login_user(user)  # Log the user in
-#             flash('Login successful!', 'success')
-#             return redirect(url_for('main.index'))
-#         else:
-#             flash('Login failed. Check your username and/or password.', 'danger')
-
-#     return render_template('login.html')
-
-
-
+# # 🔥 Signup
 # @main.route('/signup', methods=['GET', 'POST'])
 # def signup():
 #     if current_user.is_authenticated:
 #         return redirect(url_for('main.index'))
 
 #     if request.method == 'POST':
-#         username = request.form['username']
+#         email = request.form['username']  # keep using "username" field for email
 #         password = request.form['password']
 
-#         # Check if the username already exists
-#         existing_user = User.query.filter_by(username=username).first()
+#         existing_user = User.get_user(email)
 #         if existing_user:
-#             flash('Username already exists. Please choose another.', 'danger')
+#             flash('User already exists. Please choose another.', 'danger')
 #             return redirect(url_for('main.signup'))
 
-#         # Hash password and create new user
-#         hashed_password = generate_password_hash(password, method='pbkdf2:sha256')
-#         new_user = User(username=username, password=hashed_password)
-
-#         db.session.add(new_user)
-#         db.session.commit()
-
+#         User.create_user(email, password)
 #         flash('Your account has been created!', 'success')
 #         return redirect(url_for('main.login'))
 
 #     return render_template('signup.html')
 
 
-# # Route for logout
-# @main.route('/logout')
-# @login_required  # Ensure the user must be logged in to access this route
-# def logout():
-#     print('user getting logged out ......')
-#     logout_user()  # Logs the user out
-#     return redirect(url_for('main.login'))  # Redirect to the login page after logout
+# # 🔥 Login
+# @main.route('/login', methods=['GET', 'POST'])
+# def login():
+#     if current_user.is_authenticated:
+#         return redirect(url_for('main.index'))
 
-# # Protected route for logged-in users
+#     if request.method == 'POST':
+#         email = request.form['username']  # same "username" field
+#         password = request.form['password']
+
+#         user = User.get_user(email)
+#         if user and user.check_password(password):
+#             login_user(user)  # Requires User class to subclass UserMixin
+#             flash('Login successful!', 'success')
+#             return redirect(url_for('main.index'))
+#         else:
+#             flash('Login failed. Check your email and/or password.', 'danger')
+
+#     return render_template('login.html')
+
+
+# # 🔥 Logout
+# @main.route('/logout')
+# @login_required
+# def logout():
+#     logout_user()
+#     return redirect(url_for('main.login'))
+
+
+# # 🔒 Protected route
 # @main.route('/index')
 # @login_required
 # def index():
@@ -135,101 +236,21 @@ import google.generativeai as genai
 
 
 
+@main.route("/Terms_of_service.html")
+def terms():
+    return render_template('Terms_of_service.html')
 
 
 
-from flask import Blueprint, request, redirect, url_for, render_template, flash
-from flask_login import login_user, logout_user, login_required, current_user
-from werkzeug.security import generate_password_hash, check_password_hash
-from models import User  # Firestore-based User class
-
-main = Blueprint('main', __name__)
-
-ALPHA_VANTAGE_API_KEY = os.getenv("ALPHA_VANTAGE_API_KEY", "MSC4JZ5TIYC8P80T")
-NEWS_API_KEY = "3db8fcc3c31e405492f6849159dad9e6"
-geminiApiKey = "AIzaSyBW2Xwxxz4SK01_vUrTYhZ_8lc5p8YrT-A"
-
-
-# 🔥 View all users (Admin)
-@main.route('/admin/view_users')
-def view_users():
-    users_ref = User.users_ref.stream()
-    users = [doc.to_dict() for doc in users_ref]
-    return render_template('view_users.html', users=users)
-
-
-# 🔥 Delete a user (Admin)
-@main.route('/admin/delete_user/<email>', methods=['POST'])
-def delete_user(email):
-    user = User.get_user(email)
-    if user:
-        User.users_ref.document(email).delete()
-        return "User deleted successfully!", 200
-    return "User not found!", 404
-
-
-# 🔥 Signup
-@main.route('/signup', methods=['GET', 'POST'])
-def signup():
-    if current_user.is_authenticated:
-        return redirect(url_for('main.index'))
-
-    if request.method == 'POST':
-        email = request.form['username']  # keep using "username" field for email
-        password = request.form['password']
-
-        existing_user = User.get_user(email)
-        if existing_user:
-            flash('User already exists. Please choose another.', 'danger')
-            return redirect(url_for('main.signup'))
-
-        User.create_user(email, password)
-        flash('Your account has been created!', 'success')
-        return redirect(url_for('main.login'))
-
-    return render_template('signup.html')
-
-
-# 🔥 Login
-@main.route('/login', methods=['GET', 'POST'])
-def login():
-    if current_user.is_authenticated:
-        return redirect(url_for('main.index'))
-
-    if request.method == 'POST':
-        email = request.form['username']  # same "username" field
-        password = request.form['password']
-
-        user = User.get_user(email)
-        if user and user.check_password(password):
-            login_user(user)  # Requires User class to subclass UserMixin
-            flash('Login successful!', 'success')
-            return redirect(url_for('main.index'))
-        else:
-            flash('Login failed. Check your email and/or password.', 'danger')
-
-    return render_template('login.html')
-
-
-# 🔥 Logout
-@main.route('/logout')
-@login_required
-def logout():
-    logout_user()
-    return redirect(url_for('main.login'))
-
-
-# 🔒 Protected route
-@main.route('/index')
-@login_required
-def index():
-    return render_template('index.html')
+@main.route("/About_us.html")
+def termss():
+    return render_template('About_us.html')
 
 
 
-
-
-
+@main.route("/Privacy_policy.html")
+def termsis():
+    return render_template('Privacy_policy.html')
 
 
 
@@ -312,7 +333,7 @@ def fakeNewsInput():
 
 # Route for fetching dividends (ensure it's only defined once)
 @main.route('/get_dividends', methods=['POST'])
-@login_required
+#@login_required
 def get_dividends():
 
     stock_symbol = request.form.get('stock_name', '').strip()
@@ -533,6 +554,164 @@ def get_BuySellSignals():
                            BuySellSignalsAnalysis=getTechnicalBuyAndSellSignals)
 
 
+# @main.route("/Portfolio_Analysis", methods=['GET', 'POST'])
+# def portfolio_Analysis():
+#     fetch_portfolio = None  # Default value
+
+#     if request.method == 'POST':
+#         user_prompt = request.form.get('user_prompt')
+
+#         # Call your analyzer function
+#         fetch_portfolio = fetch_portfolio_analyzer(user_prompt)
+
+#         # Render the same page with the result
+#         return render_template(
+#             'portfolioAnalysis.html',
+#             user_prompt=user_prompt,
+#             fetch_portfolio=fetch_portfolio
+#         )
+
+#     # GET request (initial load)
+#     return render_template('portfolioAnalysis.html')
+
+
+# @main.route("/Portfolio_Analysis", methods=['GET', 'POST'])
+# def portfolio_Analysis():
+#     if request.method == 'POST':
+#         user_prompt = request.form.get('user_prompt')
+
+#         (
+#             invested_value, current_value, total_gain_value, total_loss_value,
+#             total_gain_percent, total_loss_percent, overall_return_percent,
+#             sector_allocation_percent_IT, sector_allocation_percent_Financials,
+#             sector_allocation_percent_Energy, sector_allocation_percent_Consumer_Discretionary,
+#             sector_allocation_percent_Consumer_Staples, sector_allocation_percent_Health_Care,
+#             sector_allocation_percent_Industrials, sector_allocation_percent_Materials,
+#             sector_allocation_percent_Communication_Services, sector_allocation_percent_Utilities,
+#             sector_allocation_percent_Real_Estate, sector_allocation_percent_Real_Other,
+#             summary, top_holdings , 
+#         ) = fetch_portfolio_analyzer(user_prompt)
+
+#         # You can now access any of them individually, for example:
+#         print(invested_value, summary)
+
+
+#         data = fetch_dversification_analysis(user_prompt)
+#         print(data)
+
+#         return render_template(
+#             'portfolioAnalysis.html',
+#             invested_value=invested_value,
+#             current_value=current_value,
+#             total_gain_value=total_gain_value,
+#             total_loss_value=total_loss_value,
+#             total_gain_percent=total_gain_percent,
+#             total_loss_percent=total_loss_percent,
+#             overall_return_percent=overall_return_percent,
+#             sector_allocation_percent_IT=sector_allocation_percent_IT,
+#             sector_allocation_percent_Financials=sector_allocation_percent_Financials,
+#             sector_allocation_percent_Energy = sector_allocation_percent_Energy , 
+#             sector_allocation_percent_Consumer_Discretionary = sector_allocation_percent_Consumer_Discretionary , 
+#             sector_allocation_percent_Consumer_Staples = sector_allocation_percent_Consumer_Staples , 
+#             sector_allocation_percent_Health_Care = sector_allocation_percent_Health_Care , 
+#             sector_allocation_percent_Industrials = sector_allocation_percent_Industrials , 
+#             sector_allocation_percent_Materials = sector_allocation_percent_Materials , 
+#             sector_allocation_percent_Communication_Services = sector_allocation_percent_Communication_Services , 
+#             sector_allocation_percent_Utilities = sector_allocation_percent_Utilities , 
+#             sector_allocation_percent_Real_Estate = sector_allocation_percent_Real_Estate , 
+#             sector_allocation_percent_Real_Other = sector_allocation_percent_Real_Other , 
+
+
+#             summary=summary,
+#             top_holdings=top_holdings
+#         )
+
+#     return render_template('portfolioAnalysis.html')
+
+
+
+@main.route("/Portfolio_Analysis", methods=['GET', 'POST'])
+
+def portfolio_Analysis():
+    if request.method == 'POST':
+        user_prompt = request.form.get('user_prompt')
+
+        (
+            invested_value, current_value, total_gain_value, total_loss_value,
+            total_gain_percent, total_loss_percent, overall_return_percent,
+            sector_allocation_percent_IT, sector_allocation_percent_Financials,
+            sector_allocation_percent_Energy, sector_allocation_percent_Consumer_Discretionary,
+            sector_allocation_percent_Consumer_Staples, sector_allocation_percent_Health_Care,
+            sector_allocation_percent_Industrials, sector_allocation_percent_Materials,
+            sector_allocation_percent_Communication_Services, sector_allocation_percent_Utilities,
+            sector_allocation_percent_Real_Estate, sector_allocation_percent_Real_Other,
+            percentNeed_in_IT, percentNeed_in_finance, percentNeed_in_energy,
+            percentNeed_in_CD, percentNeed_in_CS, percentNeed_in_healthcare,
+            percentNeed_in_industrials, percentNeed_in_materials,
+            percentNeed_in_communication_services, percentNeed_in_utilities,
+            percentNeed_in_real_estate, percentNeed_in_real_other,
+            summary, top_holdings
+        ) = fetch_portfolio_analyzer(user_prompt)
+
+        # Debug prints
+        print(invested_value, summary)
+
+        # data = fetch_dversification_analysis(user_prompt)
+        # print(data)
+
+        return render_template(
+            'portfolioAnalysis.html',
+            invested_value=invested_value,
+            current_value=current_value,
+            total_gain_value=total_gain_value,
+            total_loss_value=total_loss_value,
+            total_gain_percent=total_gain_percent,
+            total_loss_percent=total_loss_percent,
+            overall_return_percent=overall_return_percent,
+            
+            sector_allocation_percent_IT=sector_allocation_percent_IT,
+            sector_allocation_percent_Financials=sector_allocation_percent_Financials,
+            sector_allocation_percent_Energy=sector_allocation_percent_Energy,
+            sector_allocation_percent_Consumer_Discretionary=sector_allocation_percent_Consumer_Discretionary,
+            sector_allocation_percent_Consumer_Staples=sector_allocation_percent_Consumer_Staples,
+            sector_allocation_percent_Health_Care=sector_allocation_percent_Health_Care,
+            sector_allocation_percent_Industrials=sector_allocation_percent_Industrials,
+            sector_allocation_percent_Materials=sector_allocation_percent_Materials,
+            sector_allocation_percent_Communication_Services=sector_allocation_percent_Communication_Services,
+            sector_allocation_percent_Utilities=sector_allocation_percent_Utilities,
+            sector_allocation_percent_Real_Estate=sector_allocation_percent_Real_Estate,
+            sector_allocation_percent_Real_Other=sector_allocation_percent_Real_Other,
+
+            summary=summary,
+            top_holdings=top_holdings,
+
+            percentNeed_in_IT=percentNeed_in_IT,
+            percentNeed_in_finance=percentNeed_in_finance,
+            percentNeed_in_energy=percentNeed_in_energy,
+            percentNeed_in_CD=percentNeed_in_CD,
+            percentNeed_in_CS=percentNeed_in_CS,
+            percentNeed_in_healthcare=percentNeed_in_healthcare,
+            percentNeed_in_industrials=percentNeed_in_industrials,
+            percentNeed_in_materials=percentNeed_in_materials,
+            percentNeed_in_communication_services=percentNeed_in_communication_services,
+            percentNeed_in_utilities=percentNeed_in_utilities,
+            percentNeed_in_real_estate=percentNeed_in_real_estate,
+            percentNeed_in_real_other=percentNeed_in_real_other
+        )
+
+    return render_template('portfolioAnalysis.html')
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -571,25 +750,74 @@ def latest_price(stock_name):
 
 def fetch_fake_news_detector(user_prompt):
 
-    # Configure the Gemini client
-    genai.configure(api_key="AIzaSyBW2Xwxxz4SK01_vUrTYhZ_8lc5p8YrT-A")
 
-    model = genai.GenerativeModel('gemini-1.5-pro')
 
-    serverPrompt = f"""
+    from google import genai
+
+    # 1. Initialize the client (as shown in the previous answer)
+    # Note: It's best practice to set the API key as an environment variable (GEMINI_API_KEY)
+    # and let genai.Client() pick it up automatically.
+    client = genai.Client(api_key="AIzaSyBxmfx0h214tSL_DlUQMheL9bsMrgBNH9s")
+
+    # 2. ✅ CHANGE THE MODEL ID
+    # The old model: 'gemini-1.5-pro-latest' ❌
+    # The new model: 'gemini-2.5-pro' ✅
+    MODEL_NAME = 'gemini-2.5-flash' 
+
+    # Define the system instruction for the model's personality and role
+    serverPrompt = """
 You are a stock news detector. Your role is to determine if stock news provided via text/links is fake or true. Analyze the content of the provided links or text to verify its authenticity, cross-referencing with reliable sources if necessary. If the input contains both links and text, analyze both for consistency and accuracy.
 
 If the user input is unrelated to stock news thrugh texts or financial markets, respond with:
 
-'Sorry, I can only analyze stock news provided via links or text. Please provide valid stock news content.' Here is the user prompt:    {user_prompt}
+'Sorry, I can only analyze stock news provided via links or text. Please provide valid stock news content.'   
     """
 
-    # Create a chat
-    chat = model.start_chat(history=[])
 
-    response = chat.send_message(serverPrompt)
+    # Replace {user_prompt} with the actual variable holding the user's question
+    #user_prompt = "What is a P/E ratio?"
+
+    # 3. Create a chat using the client object with the correct model and system instruction
+    # (Assuming you are using the correct, modern google-genai library)
+    chat = client.chats.create(
+        model=MODEL_NAME,
+        config={"system_instruction": serverPrompt}
+    )
+
+    response = chat.send_message(user_prompt)
 
     return response.text
+
+
+
+
+
+
+
+
+
+
+
+
+#     # Configure the Gemini client
+#     genai.configure(api_key="AIzaSyBW2Xwxxz4SK01_vUrTYhZ_8lc5p8YrT-A")
+
+#     model = genai.GenerativeModel('gemini-1.5-pro')
+
+#     serverPrompt = f"""
+# You are a stock news detector. Your role is to determine if stock news provided via text/links is fake or true. Analyze the content of the provided links or text to verify its authenticity, cross-referencing with reliable sources if necessary. If the input contains both links and text, analyze both for consistency and accuracy.
+
+# If the user input is unrelated to stock news thrugh texts or financial markets, respond with:
+
+# 'Sorry, I can only analyze stock news provided via links or text. Please provide valid stock news content.' Here is the user prompt:    {user_prompt}
+#     """
+
+#     # Create a chat
+#     chat = model.start_chat(history=[])
+
+#     response = chat.send_message(serverPrompt)
+
+#     return response.text
 
 
 
@@ -835,7 +1063,7 @@ def fetch_FinancialAnalysis(stock_name):
 
         if current_ratio > 1 and profit_margin > 0 and debt_ratio < 50:
 
-           result = f"{stock_name.upper()}Share Seems to be Fundamentally Strong according to Our Analysis "
+           result = f"{stock_name.upper()} Share Seems to be Fundamentally Strong according to Our Analysis "
 
 
 
@@ -894,7 +1122,7 @@ def fetch_fastInfo(stock_name):
 
 
 
-def getTechnicalBuyAndSellSignals(stock_name):
+def getTechnicalBuyAndSellSignals(share_name):
 
     # import yfinance as yf
     # import pandas as pd
@@ -1032,198 +1260,462 @@ def getTechnicalBuyAndSellSignals(stock_name):
     #
     #
     # return main(stock_name)
-    import yfinance as yf
+
+
+
+    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    import matplotlib
+    matplotlib.use('Agg')  # ✅ Prevent MacOS NSWindow crash
+
     import pandas as pd
     import numpy as np
     import matplotlib.pyplot as plt
+    import yfinance as yf
     import os
-    from datetime import datetime, timedelta
 
-    def get_stock_data(stock_symbol, period='8mo'):
-        """Fetch stock data with error handling"""
-        try:
-            end_date = datetime.now().strftime('%Y-%m-%d')
-            start_date = (datetime.now() - timedelta(days=240)).strftime('%Y-%m-%d')
-            data = yf.download(tickers=stock_symbol, start=start_date, end=end_date)
-            if data.empty:
-                raise ValueError("No data returned from yfinance")
-            return data
-        except Exception as e:
-            print(f"Error fetching stock data: {e}")
-            return None
 
-    def calculate_support_resistance(data, window=5):
-        """Improved support/resistance calculation"""
-        data['Support'] = data['Low'].rolling(window=window, center=True).min()
-        data['Resistance'] = data['High'].rolling(window=window, center=True).max()
-        return data
+    save_dir="static"
+    # Ensure static directory exists
+    os.makedirs(save_dir, exist_ok=True)
 
-    def add_indicators(data):
-        """Calculate all technical indicators"""
-        # RSI
-        delta = data['Close'].diff()
-        gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
-        loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
-        rs = gain / loss
-        data['RSI'] = 100 - (100 / (1 + rs))
-        
-        # MACD
-        data['EMA_12'] = data['Close'].ewm(span=12, adjust=False).mean()
-        data['EMA_26'] = data['Close'].ewm(span=26, adjust=False).mean()
-        data['MACD'] = data['EMA_12'] - data['EMA_26']
-        data['Signal_Line'] = data['MACD'].ewm(span=9, adjust=False).mean()
-        
-        # Bollinger Bands (fixed calculation)
-        rolling_mean = data['Close'].rolling(window=20).mean()
-        rolling_std = data['Close'].rolling(window=20).std()
-        data['BB_Mid'] = rolling_mean
-        data['BB_Upper'] = rolling_mean + (2 * rolling_std)
-        data['BB_Lower'] = rolling_mean - (2 * rolling_std)
-        
-        # Moving Averages
-        data['MA_10'] = data['Close'].rolling(window=10).mean()
-        data['MA_50'] = data['Close'].rolling(window=50).mean()
-        
-        return data
+    # Fetch stock data
+    tsla = yf.download(share_name, period='3mo', interval='1d', auto_adjust=True)
+    tsla.reset_index(inplace=True)
+    tsla['Price'] = tsla['Close']
+    tsla['Day'] = range(len(tsla))
 
-    def detect_patterns(data):
-        """Pattern detection with more reliability"""
-        data['Pattern'] = ''
-        for i in range(2, len(data)-2):
-            # Head and Shoulders
-            if (data['Close'].iloc[i-2] < data['Close'].iloc[i-1] > data['Close'].iloc[i] and
-                data['Close'].iloc[i+1] < data['Close'].iloc[i] > data['Close'].iloc[i+2] and
-                data['Close'].iloc[i-1] > data['Close'].iloc[i+1]):
-                data.loc[data.index[i], 'Pattern'] = 'Head and Shoulders Top'
-            
-            # Inverse Head and Shoulders
-            elif (data['Close'].iloc[i-2] > data['Close'].iloc[i-1] < data['Close'].iloc[i] and
-                data['Close'].iloc[i+1] > data['Close'].iloc[i] < data['Close'].iloc[i+2] and
-                data['Close'].iloc[i-1] < data['Close'].iloc[i+1]):
-                data.loc[data.index[i], 'Pattern'] = 'Inverse Head and Shoulders'
-        
-        return data
+    # Bollinger Bands
+    tsla['MA20'] = tsla['Price'].rolling(window=20).mean()
+    tsla['STD20'] = tsla['Price'].rolling(window=20).std()
+    tsla['Upper'] = tsla['MA20'] + 2 * tsla['STD20']
+    tsla['Lower'] = tsla['MA20'] - 2 * tsla['STD20']
 
-    def generate_signals(data):
-        """Generate signals with multiple confirmation criteria"""
-        data['Signal'] = 0  # 0=Hold, 1=Buy, -1=Sell
-        position = 0  # 0=No position, 1=Long
-        
-        for i in range(1, len(data)):
-            # Buy Conditions (ALL must be true)
-            buy_condition = (
-                position == 0 and
-                data['RSI'].iloc[i] < 35 and
-                data['Close'].iloc[i] < data['BB_Lower'].iloc[i] and
-                data['MACD'].iloc[i] > data['Signal_Line'].iloc[i] and
-                (data['Pattern'].iloc[i] == 'Inverse Head and Shoulders' or 
-                data['Close'].iloc[i] <= data['Support'].iloc[i])
-            )
-            
-            # Sell Conditions (ANY can trigger)
-            sell_condition = (
-                position == 1 and (
-                    data['Close'].iloc[i] >= data['Resistance'].iloc[i] or
-                    data['RSI'].iloc[i] > 70 or
-                    data['Close'].iloc[i] > data['BB_Upper'].iloc[i] or
-                    data['Pattern'].iloc[i] == 'Head and Shoulders Top' or
-                    data['MA_10'].iloc[i] < data['MA_50'].iloc[i]
-                )
-            )
-            
-            if buy_condition:
-                data.loc[data.index[i], 'Signal'] = 1
-                position = 1
-                entry_price = data['Close'].iloc[i]
-            
-            elif sell_condition and position == 1:
-                data.loc[data.index[i], 'Signal'] = -1
-                position = 0
-        
-        return data
+    # Buy/Sell logic
+    buy_price = 30
+    target_return = 1.10
+    buy_signals = []
+    sell_signals = []
+    holding = False
+    entry_price = None
 
-    def plot_signals(data, stock_symbol):
-        """Enhanced visualization with all indicators"""
-        plt.figure(figsize=(16, 10))
-        
-        # Main price plot
-        plt.plot(data.index, data['Close'], label='Close Price', alpha=0.7, color='blue')
-        
-        # Plot indicators
-        plt.plot(data.index, data['MA_10'], label='10-day MA', alpha=0.5, color='orange')
-        plt.plot(data.index, data['MA_50'], label='50-day MA', alpha=0.5, color='purple')
-        plt.plot(data.index, data['BB_Upper'], '--', label='Bollinger Upper', alpha=0.3, color='gray')
-        plt.plot(data.index, data['BB_Lower'], '--', label='Bollinger Lower', alpha=0.3, color='gray')
-        
-        # Plot support/resistance
-        plt.scatter(data.index, data['Support'], color='green', label='Support', marker='_', s=100, alpha=0.5)
-        plt.scatter(data.index, data['Resistance'], color='red', label='Resistance', marker='_', s=100, alpha=0.5)
-        
-        # Plot signals
-        buy_signals = data[data['Signal'] == 1]
-        sell_signals = data[data['Signal'] == -1]
-        
-        plt.scatter(buy_signals.index, buy_signals['Close'], 
-                    color='lime', label='Buy', marker='^', s=100, alpha=1)
-        plt.scatter(sell_signals.index, sell_signals['Close'], 
-                    color='red', label='Sell', marker='v', s=100, alpha=1)
-        
-        # Formatting
-        plt.title(f"{stock_symbol} Advanced Trading Signals\n{data.index[0].date()} to {data.index[-1].date()}")
-        plt.xlabel("Date")
-        plt.ylabel("Price")
-        plt.legend(loc='upper left')
-        plt.grid(True)
-        plt.xticks(rotation=45)
-        
-        # Save plot
-        os.makedirs("static", exist_ok=True)
-        plot_path = os.path.join("static", "trading_signals.png")
-        plt.tight_layout()
-        plt.savefig(plot_path)
-        plt.close()
-        
-        print(f"Plot saved at {plot_path}")
-        return plot_path
+    for i in range(len(tsla)):
+        price = float(tsla.loc[i, 'Price'].item())  # ✅ safe scalar extraction
+        if not holding and price >= buy_price:
+            buy_signals.append((tsla.loc[i, 'Day'], price))
+            entry_price = price
+            holding = True
+        elif holding and price >= entry_price * target_return:
+            sell_signals.append((tsla.loc[i, 'Day'], price))
+            holding = False
 
-    def main(stock_symbol):
-        """Main execution function"""
-        data = get_stock_data(stock_symbol)
-        if data is not None:
-            data = calculate_support_resistance(data)
-            data = add_indicators(data)
-            data = detect_patterns(data)
-            data = generate_signals(data)
-            plot_path = plot_signals(data, stock_symbol)
-            return plot_path
-        return None
+    # Support & Resistance
+    support = tsla['Price'][(tsla['Price'].shift(1) > tsla['Price']) & (tsla['Price'].shift(-1) > tsla['Price'])]
+    resistance = tsla['Price'][(tsla['Price'].shift(1) < tsla['Price']) & (tsla['Price'].shift(-1) < tsla['Price'])]
 
-    # Example usage
-    if __name__ == "__main__":
-        stock_name = "TCS.NS"  # Tata Consultancy Services (NSE)
-        plot_path = main(stock_name)
+    # Plotting
+    plt.style.use('seaborn-v0_8')
+    plt.figure(figsize=(14, 7))
+    plt.plot(tsla['Day'], tsla['Price'], label='Close Price', color='blue')
+    plt.plot(tsla['Day'], tsla['Upper'], linestyle='--', color='orange', label='Bollinger Upper')
+    plt.plot(tsla['Day'], tsla['Lower'], linestyle='--', color='orange', label='Bollinger Lower')
+
+    # Buy/Sell markers
+    for i, price in buy_signals:
+        plt.scatter(i, price, marker='^', color='green', s=120, label='Buy Signal')
+    for i, price in sell_signals:
+        plt.scatter(i, price, marker='v', color='red', s=120, label='Sell Signal')
+
+    # Support/Resistance markers
+    plt.scatter(support.index, support, color='green', s=80, label='Support Level')
+    plt.scatter(resistance.index, resistance, color='red', s=80, label='Resistance Level')
+
+    plt.title(f'{share_name.upper()} Buy/Sell Signal Chart with Bollinger Bands')
+    plt.xlabel('Day')
+    plt.ylabel('Price (In Your Local Currency)')
+    plt.legend()
+    plt.grid(True)
+    plt.tight_layout()
+
+    graph_path = os.path.join(save_dir, 'chart.png')
+    plt.savefig(graph_path)
+    plt.close()
+
+    print(f"✅ Chart saved at: {graph_path}")
+    return graph_path
 
 
 
 
-
+    print("hello")
 
 def fetch_AI_Assistant(user_prompt):
+    from google import genai
 
+    # 1. Initialize the client (as shown in the previous answer)
+    # Note: It's best practice to set the API key as an environment variable (GEMINI_API_KEY)
+    # and let genai.Client() pick it up automatically.
+    client = genai.Client(api_key="AIzaSyBxmfx0h214tSL_DlUQMheL9bsMrgBNH9s")
 
-    # Configure the Gemini client
-    genai.configure(api_key="AIzaSyBW2Xwxxz4SK01_vUrTYhZ_8lc5p8YrT-A")
+    # 2. ✅ CHANGE THE MODEL ID
+    # The old model: 'gemini-1.5-pro-latest' ❌
+    # The new model: 'gemini-2.5-pro' ✅
+    MODEL_NAME = 'gemini-2.5-pro' 
 
-    model = genai.GenerativeModel('gemini-1.5-pro')
-
-    serverPrompt = f"""
-    You are a stock infomration provider for beginners or explainer of stocks concepts and also explain how your mindset should be while investing in stocks thurgh benjamin graham concepts/warren buffet dont take the name explaicitly. your role is to provide stock information or stock concepts to the user if the user input is unrelated to 
-    stock information / financial markets , respond with : sorry , i dont have permission to provide information on subject you asked . now below is the user prompt {user_prompt} 
+    # Define the system instruction for the model's personality and role
+    SYSTEM_INSTRUCTION = f"""
+    You are a stock information provider for beginners or explainer of stock concepts and also explain how your mindset should be while investing in stocks through Benjamin Graham concepts/Warren Buffett. Do not take their names explicitly. Your role is to provide stock information or stock concepts to the user. If the user input is unrelated to 
+    stock information / financial markets , respond with: sorry, i dont have permission to provide information on subject you asked.
     """
 
-    # Create a chat
-    chat = model.start_chat(history=[])
+    # Replace {user_prompt} with the actual variable holding the user's question
+    #user_prompt = "What is a P/E ratio?"
 
-    response = chat.send_message(serverPrompt)
+    # 3. Create a chat using the client object with the correct model and system instruction
+    # (Assuming you are using the correct, modern google-genai library)
+    chat = client.chats.create(
+        model=MODEL_NAME,
+        config={"system_instruction": SYSTEM_INSTRUCTION}
+    )
+
+    response = chat.send_message(user_prompt)
 
     return response.text
+
+
+
+
+
+
+
+
+#fucntion for analyzing portfolio analysis
+def fetch_portfolio_analyzer(user_prompt):
+    client = genai.Client(api_key="AIzaSyAL_WV2kPHgDlhU9QkB9IXCv5TuiNUs3Ws")
+
+    MODEL_NAME = "gemini-2.5-pro"
+
+    # SYSTEM_INSTRUCTION = """
+    # You are a financial data assistant.
+
+    # Given a user's textual description of their stock portfolio (including quantities, prices, and company names),
+    # you must calculate and return the following information **strictly in JSON format**:
+
+    # {
+    #   "number_of_holdings_in_entire_portfolio": <int>,
+    #   "invested_value": <float>,
+    #   "current_value": <float>,
+    #   "total_gain_value": <float>,
+    #   "total_loss_value": <float>,
+    #   "total_gain_percent": <float>,
+    #   "total_loss_percent": <float>,
+    #   "overall_return_percent": <float>,
+    #   "sector_allocation_percent": {
+    #       "Information_Technology": <float>,
+    #       "Financials": <float>,
+    #       "Energy": <float>,
+    #       "Consumer_Discretionary": <float>,
+    #       "Consumer_Staples": <float>,
+    #       "Health_Care": <float>,
+    #       "Industrials": <float>,
+    #       "Materials": <float>,
+    #       "Communication_Services": <float>,
+    #       "Utilities": <float>,
+    #       "Real_Estate": <float>,
+    #       "Other": <float>
+    #   },
+    #   "top_holdings": [
+    #       {"symbol": "<ticker>", "sector": "<sector_name>", "weight_percent": <float>}
+    #   ],
+    #   "summary": "<short summary of the portfolio>"
+    # }
+    # """
+
+
+
+
+
+    SYSTEM_INSTRUCTION = """
+    You are a financial data assistant.
+
+    Given a user's textual description of their stock portfolio (including quantities, prices, and company names),
+    you must calculate and return the following information **strictly in JSON format**:
+
+    {
+    "number_of_holdings_in_entire_portfolio": <int>,
+    "invested_value": <float>,
+    "current_value": <float>,
+    "total_gain_value": <float>,
+    "total_loss_value": <float>,
+    "total_gain_percent": <float>,
+    "total_loss_percent": <float>,
+    "overall_return_percent": <float>,
+    "sector_allocation_percent": {
+        "Information_Technology": <float>,
+        "Financials": <float>,
+        "Energy": <float>,
+        "Consumer_Discretionary": <float>,
+        "Consumer_Staples": <float>,
+        "Health_Care": <float>,
+        "Industrials": <float>,
+        "Materials": <float>,
+        "Communication_Services": <float>,
+        "Utilities": <float>,
+        "Real_Estate": <float>,
+        "Other": <float>
+    },
+    "top_holdings": [
+        {
+        "symbol": "<ticker>",
+        "sector": "<sector_name>",
+        "weight_percent": <float>
+        }
+    ],
+    "summary": "<short summary of the portfolio>",
+
+    // ✅ NEW: Combined stock names with country extensions
+    "stock_identifiers_with_extension": ["<stock_name_1.ext>", "<stock_name_2.ext>", "..."]
+    }
+    """
+
+
+
+
+
+
+
+
+
+    chat = client.chats.create(
+        model=MODEL_NAME,
+        config={"system_instruction": SYSTEM_INSTRUCTION}
+    )
+
+    response = chat.send_message(user_prompt)
+
+    # ✅ Extract only the text content
+    try:
+        if hasattr(response, 'text'):
+            x = response.text
+        else:
+            x = response.candidates[0].content.parts[0].text
+    except Exception as e:
+        print("Error extracting text:", e)
+        return None
+
+    def safe_json_loads(raw_text):
+        cleaned = raw_text.strip()
+
+        if cleaned.startswith("```"):
+            cleaned = cleaned.strip("`")
+            cleaned = cleaned.replace("json", "", 1).strip()
+
+        return json.loads(cleaned)
+
+    # usage
+    data = safe_json_loads(x)
+
+    invested_value = data["invested_value"]
+    current_value = data["current_value"]
+
+    total_gain_value = data["total_gain_value"]
+    total_loss_value = data["total_loss_value"]
+
+    total_gain_percent = data["total_gain_percent"]
+    total_loss_percent = data["total_loss_percent"]
+
+    overall_return_percent = data["overall_return_percent"]
+
+    sector_allocation_percent_IT = data["sector_allocation_percent"]["Information_Technology"]
+    sector_allocation_percent_Financials = data["sector_allocation_percent"]["Financials"]
+    sector_allocation_percent_Energy = data["sector_allocation_percent"]["Energy"]
+    sector_allocation_percent_Consumer_Discretionary = data["sector_allocation_percent"]["Consumer_Discretionary"]
+    sector_allocation_percent_Consumer_Staples = data["sector_allocation_percent"]["Consumer_Staples"]
+    sector_allocation_percent_Health_Care = data["sector_allocation_percent"]["Health_Care"]
+    sector_allocation_percent_Industrials = data["sector_allocation_percent"]["Industrials"]
+    sector_allocation_percent_Materials = data["sector_allocation_percent"]["Materials"]
+    sector_allocation_percent_Communication_Services = data["sector_allocation_percent"]["Communication_Services"]
+    sector_allocation_percent_Utilities = data["sector_allocation_percent"]["Utilities"]
+    sector_allocation_percent_Real_Estate = data["sector_allocation_percent"]["Real_Estate"]
+    sector_allocation_percent_Real_Other = data["sector_allocation_percent"]["Other"]
+
+    summary = data["summary"]
+
+    number_of_holdings = data["number_of_holdings_in_entire_portfolio"]
+
+    stock_symbol_data = data["stock_identifiers_with_extension"]
+
+
+    print("number of holdings ", number_of_holdings)
+
+    
+    
+
+    top_holdings = []
+
+    for stock in data["top_holdings"]:
+        top_holdings.append({
+            "symbol": stock["symbol"],
+            "sector": stock["sector"],
+            "weight_percent": stock["weight_percent"]
+        })    
+
+    print("this is invested value :", data["invested_value"])
+
+
+    total_allocation_in_each_sector = 100/number_of_holdings
+    percentNeed_in_IT = total_allocation_in_each_sector - sector_allocation_percent_IT
+    percentNeed_in_finance = total_allocation_in_each_sector - sector_allocation_percent_Financials
+    percentNeed_in_energy = total_allocation_in_each_sector - sector_allocation_percent_Energy
+    percentNeed_in_CD = total_allocation_in_each_sector - sector_allocation_percent_Consumer_Discretionary
+    percentNeed_in_CS = total_allocation_in_each_sector - sector_allocation_percent_Consumer_Staples
+    percentNeed_in_healthcare = total_allocation_in_each_sector - sector_allocation_percent_Health_Care
+    percentNeed_in_industrials = total_allocation_in_each_sector - sector_allocation_percent_Industrials
+    percentNeed_in_materials = total_allocation_in_each_sector - sector_allocation_percent_Materials 
+    percentNeed_in_communication_services = total_allocation_in_each_sector - sector_allocation_percent_Communication_Services
+    percentNeed_in_utilities = total_allocation_in_each_sector - sector_allocation_percent_Utilities
+    percentNeed_in_real_estate = total_allocation_in_each_sector - sector_allocation_percent_Real_Estate
+    percentNeed_in_real_other = total_allocation_in_each_sector - sector_allocation_percent_Real_Other
+
+
+
+
+
+    x =  computation_of_SD_for_portfolio_analysis(stock_symbol_data)
+    print("this is stock symbol data : " , stock_symbol_data)
+    print("this is portfolio SD : " , x)
+
+
+
+
+
+
+    return (
+        invested_value,
+        current_value,
+        total_gain_value,
+        total_loss_value,
+        total_gain_percent,
+        total_loss_percent,
+        overall_return_percent,
+
+        sector_allocation_percent_IT,
+        sector_allocation_percent_Financials,
+        sector_allocation_percent_Energy,
+        sector_allocation_percent_Consumer_Discretionary,
+        sector_allocation_percent_Consumer_Staples,
+        sector_allocation_percent_Health_Care,
+        sector_allocation_percent_Industrials,
+        sector_allocation_percent_Materials,
+        sector_allocation_percent_Communication_Services,
+        sector_allocation_percent_Utilities,
+        sector_allocation_percent_Real_Estate,
+        sector_allocation_percent_Real_Other,
+
+        percentNeed_in_IT,
+        percentNeed_in_finance,
+        percentNeed_in_energy,
+        percentNeed_in_CD,
+        percentNeed_in_CS,
+        percentNeed_in_healthcare,
+        percentNeed_in_industrials,
+        percentNeed_in_materials,
+        percentNeed_in_communication_services,
+        percentNeed_in_utilities,
+        percentNeed_in_real_estate,
+        percentNeed_in_real_other,
+
+        summary,
+        top_holdings
+    )
+
+
+
+
+
+
+
+
+
+#still indevelopeing phase 
+def computation_of_SD_for_portfolio_analysis(tickers):
+    if not isinstance(tickers, list):
+        raise ValueError("Tickers must be a list, e.g. ['TCS.NS', 'INFY.NS']")
+
+    end_date = datetime.today().date()
+    start_date = end_date - timedelta(days=365)
+
+    valid_tickers = []
+    for t in tickers:
+        try:
+            info = yf.Ticker(t).history(period="1mo")
+            if not info.empty:
+                valid_tickers.append(t)
+        except:
+            continue
+
+    if not valid_tickers:
+        print("❌ No valid tickers found.")
+        return
+
+    print(f"✅ Valid tickers ({len(valid_tickers)}): {valid_tickers}")
+
+    data = yf.download(valid_tickers, start=start_date, end=end_date, auto_adjust=True)['Close']
+
+    if data.empty:
+        print("❌ No data fetched. Check connection or Yahoo API limits.")
+        return
+
+    returns = data.pct_change().dropna()
+    weights = np.ones(len(valid_tickers)) / len(valid_tickers)
+    cov_matrix = returns.cov()
+
+    portfolio_var = np.dot(weights.T, np.dot(cov_matrix, weights))
+    portfolio_sd = np.sqrt(portfolio_var)
+    annualized_sd = portfolio_sd * np.sqrt(252)
+    individual_sds = (returns.std() * np.sqrt(252)).sort_values(ascending=False)
+
+    print(f"\n📊 Annualized Portfolio SD: {round(annualized_sd * 100, 2)} %")
+    print("\n📈 Individual Stock SDs (Annualized):\n")
+    print(individual_sds)
+    print("this is portfolio sd " , portfolio_sd)
+
+    return portfolio_sd
+
+
+
+
+
+
+
+
+
+
+
+#FOR PORTFOLIO INSIGHTS BUTTON IDEA 
+
+
+#in portfolio insights the user wil add each stock and all his portfolio then click generate then we will provide them with all the web charts like which stock 
+#is more sector is more also ai analysis on how your portfolio should e which is risky and which is not etc like that everything ai will predict and give all the reports all financial stamenets of hsi protfolio etc 
+
+
+
+
+
+
+
+#demo data 
+#Qty. 20 • Buy avg. 58.20 +145.36% ASHOKLEY +1,692.00 Invested 1,164.00 LTP 142.80 Qty. 10 • Buy avg. 211.91 -24.40% BIRLACABLE -517.10 Invested 2,119.10 LTP 160.20 Qty. 15 • Buy avg. 217.50 +79.49% COALINDIA +2,593.50 Invested 3,262.50 LTP 390.40 Qty. 10 • Buy avg. 79.25 +306.60% ETERNAL +2,429.95 Invested 792.55 LTP 322.25 Qty. 8 • Buy avg. 216.15 +77.26% EXIDEIND +1,336.00 Invested 1,729.20 LTP 383.15 Qty. 10 • Buy avg. 113.86 +61.87% GAIL +704.40 Invested 1,138.60 LTP 184.30 Qty. 20 • Buy avg. 772.40 +28.36% HDFCBANK +4,381.00 Invested 15,448.00 LTP 991.45 Qty. 7 • Buy avg. 1,960.00 +23.06% HYUNDAI +3,163.30 Invested 13,720.00
